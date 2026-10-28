@@ -5,23 +5,24 @@ Run with `make refresh-data`, or `python -m app.ingest` from backend/.
 
 import time
 from collections.abc import Iterator
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypeVar
 
 import httpx
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 BASE_URL = "https://data.elexon.co.uk/bmrs/api/v1"
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
-# Half-open UTC windows: [start, end).
-ACTUALS_START = datetime(2026, 1, 2, tzinfo=timezone.utc)  # on startTime
-ACTUALS_END = datetime(2026, 2, 1, tzinfo=timezone.utc)
-FORECASTS_START = datetime(2025, 12, 30, tzinfo=timezone.utc)  # on publishTime
-FORECASTS_END = datetime(2026, 1, 31, tzinfo=timezone.utc)
+# Half-open UTC windows: [start, end). Day-ahead purchase decisions made in January 2026
+# (on D-1 = 1..31 Jan) are for delivery days 2 Jan .. 1 Feb, so actuals cover those days
+# and forecasts cover every run published up to the last decision, on 31 Jan (with two
+# days before the first decision, so the earliest gates have runs to choose from).
+ACTUALS_START = datetime(2026, 1, 2, tzinfo=UTC)  # on startTime
+ACTUALS_END = datetime(2026, 2, 2, tzinfo=UTC)
+FORECASTS_START = datetime(2025, 12, 30, tzinfo=UTC)  # on publishTime
+FORECASTS_END = datetime(2026, 2, 1, tzinfo=UTC)
 
 CHUNK = timedelta(days=7)
 TIMEOUT = httpx.Timeout(60.0, connect=10.0)  # API responses can take 15s+ under load
@@ -47,10 +48,7 @@ def get_json(client: httpx.Client, path: str, params: dict[str, str]) -> list[di
             response.raise_for_status()
             return response.json()
         except (httpx.TransportError, httpx.HTTPStatusError) as exc:
-            retryable = (
-                not isinstance(exc, httpx.HTTPStatusError)
-                or exc.response.status_code in RETRY_STATUSES
-            )
+            retryable = not isinstance(exc, httpx.HTTPStatusError) or exc.response.status_code in RETRY_STATUSES
             if not retryable or attempt == MAX_ATTEMPTS:
                 raise
             delay = BACKOFF_SECONDS * 2 ** (attempt - 1)
@@ -94,9 +92,7 @@ def fetch_forecasts(client: httpx.Client) -> pd.DataFrame:
     return normalise(rows, "publishTime", FORECASTS_START, FORECASTS_END, key=["publishTime", "startTime"])
 
 
-def normalise(
-    rows: list[dict[str, Any]], window_col: str, start: datetime, end: datetime, key: list[str]
-) -> pd.DataFrame:
+def normalise(rows: list[dict[str, Any]], window_col: str, start: datetime, end: datetime, key: list[str]) -> pd.DataFrame:
     """Parse times as tz-aware UTC, keep rows with window_col in [start, end), de-duplicate on key.
 
     Where a key repeats, the most recently published row wins.
@@ -127,6 +123,10 @@ FETCHED_AT_KEY = b"fetched_at"
 
 def write_snapshot(df: pd.DataFrame, path: Path, fetched_at: datetime) -> None:
     """Parquet with the fetch time in its metadata, since file times don't survive a git clone."""
+    # Imported here: the serverless API reads the JSON snapshot and ships without pyarrow.
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
     table = pa.Table.from_pandas(df, preserve_index=False)
     metadata = {**(table.schema.metadata or {}), FETCHED_AT_KEY: fetched_at.isoformat().encode()}
     pq.write_table(table.replace_schema_metadata(metadata), path)
@@ -140,7 +140,7 @@ def main() -> None:
         print("Fetching forecasts")
         forecasts = fetch_forecasts(client)
 
-    fetched_at = datetime.now(timezone.utc)
+    fetched_at = datetime.now(UTC)
     write_snapshot(actuals, DATA_DIR / "actuals.parquet", fetched_at)
     write_snapshot(forecasts, DATA_DIR / "forecasts.parquet", fetched_at)
 
