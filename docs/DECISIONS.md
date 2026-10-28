@@ -15,7 +15,7 @@ boundary and the DST case.
 
 **Why not interpolate the hourly forecast to half-hours?**
 Interpolation would score a value nobody published. Only the on-the-hour half-hours are
-paired (720 of 1,440). The other 720 are counted as "missing forecast" and reported in
+paired (744 of 1,488). The other 744 are counted as "missing forecast" and reported in
 coverage, never scored. The chart draws a line through the hourly points for
 readability, but the tooltip says "Forecasts are hourly" between them.
 
@@ -24,10 +24,10 @@ The 90th percentile of the error, taken over the hours the forecast was too high
 it as: holding back this much would have covered 90% of the over-forecast hours. It's a
 planning number, not a confidence interval.
 
-**Why is the bias +1.8 GW, and why doesn't the app explain it?**
+**Why is the bias +1.7 GW, and why doesn't the app explain it?**
 Because the data can't settle it, and an unsupported cause would be the one thing a
 domain reviewer would rightly attack. What the data does show:
-- The bias barely changes with lead time: +1.5 GW at 1 h ahead, +1.8 GW at 24 h.
+- The bias barely changes with lead time: +1.5 GW at 1 h ahead, +1.7 GW at 24 h.
 - It is about half the squared error.
 - Forecast and outturn still correlate at 0.93.
 
@@ -55,8 +55,8 @@ over-forecast.
 ## The architecture
 
 **Why compute everything in the browser when there's an API?**
-For speed and robustness on a live walkthrough. The snapshot is small (1,440 actuals,
-18,688 forecast rows, 47 KB gzipped). The browser loads it once and computes any day,
+For speed and robustness on a live walkthrough. The snapshot is small (1,488 actuals,
+19,272 forecast rows, 49 KB gzipped). The browser loads it once and computes any day,
 gate or horizon in a few milliseconds, so controls respond on the next frame and
 nothing waits on the network. If the API goes down mid-demo, the page keeps working.
 
@@ -65,7 +65,7 @@ They are the reference implementation and they're useful on their own (`/docs`).
 importantly, they make the browser engine checkable:
 - `npm test` replays the backend's answers on two synthetic snapshots, one spanning a
   DST change.
-- `make parity` compares every view the API serves on the real data: 90 Decision
+- `make parity` compares every view the API serves on the real data: 93 Decision
   views, 3 gates and 49 horizons, to a relative tolerance of 1e-9.
 
 Two implementations with an automated equality check are safer than one implementation
@@ -83,7 +83,7 @@ every other response is precomputed in a background thread over the next few sec
 A request that arrives first computes and caches its own answer.
 
 **Why ETags and gzip on a local app?**
-Repeat visits cost a 304 instead of a download, and the snapshot travels as 47 KB
+Repeat visits cost a 304 instead of a download, and the snapshot travels as 49 KB
 instead of 137 KB. Both are cheap to get right and they matter once the app is
 deployed.
 
@@ -109,8 +109,9 @@ reads as uncertainty rather than as a third series.
 
 ## Limits, stated plainly
 
-- One month of data (January 2026, all GMT). The rules handle DST and the UI takes its
-  date range from the data, but only January has been analysed.
+- One month of decisions: those made in January 2026, for delivery 2 Jan – 1 Feb (all
+  GMT). The rules handle DST and the UI takes its date range from the data, but only
+  this window has been analysed.
 - Results are in-sample: the buffer and bias describe January. They aren't a validated
   forecast correction.
 - To analyse another window, change `ACTUALS_START`/`ACTUALS_END` and the forecast range
