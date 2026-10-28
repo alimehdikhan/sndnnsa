@@ -239,6 +239,29 @@ The image honours `$PORT`, runs as a non-root user and has a health check. It us
 about 140 MB of memory. `render.yaml` deploys it as a Render web service
 (New → Blueprint).
 
+## AI tools
+
+As the brief allows, this project was built with AI assistance. **Claude Code**
+(Anthropic's coding agent, running Claude Opus 5.5) was used throughout:
+
+- **Code.** The backend, the frontend, the in-browser engine, tests, CI, Docker and the
+  deployment configuration were written and refactored with it.
+- **Analysis.** The numbers in Findings came from scripts it ran against the committed
+  snapshot. None were typed in by hand.
+- **Design.** The UI was iterated with it, checked against screenshots in both themes
+  and at several widths.
+- **Documentation.** It drafted this README, `docs/DECISIONS.md` and `PERFORMANCE.md`.
+
+The requirements, priorities and design feedback were mine; the AI did most of the
+implementation. Its output wasn't taken on trust:
+
+- Metrics are tested against hand-computed values. Selection rules are tested at the
+  gate boundary, across a clock change and with missing data.
+- The browser engine is checked against the backend's own answers, both on fixtures
+  and on every live API view.
+- Each push runs CI: ruff, mypy, pytest, frontend checks, Playwright, Lighthouse and a
+  Docker smoke test.
+
 ## Caveats
 
 - **Bias.** Across the window the forecast sits well above outturn: about +1.7 GW at
