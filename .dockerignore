@@ -1,0 +1,15 @@
+# Only source goes into the build context; everything below is rebuilt or not needed.
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.egg-info
+**/.pytest_cache
+frontend/dist
+frontend/bundle-report.html
+frontend/tests
+.lighthouseci
+.impeccable
+.github
+docs
+*.md
+!backend/README.md
