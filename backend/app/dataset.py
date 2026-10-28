@@ -1,18 +1,24 @@
-"""The data the API serves, loaded once at startup (see app.main)."""
+"""The data the API serves, loaded once at startup (see app.main).
+
+`load()` reads the parquet snapshot (pyarrow). `load_json()` reads the same data from
+data/snapshot.json, for the serverless deployment, which ships without pyarrow.
+"""
 
 import hashlib
+import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar
 
 import pandas as pd
-import pyarrow.parquet as pq
 
 from app.ingest import ACTUALS_END, ACTUALS_START, DATA_DIR, FETCHED_AT_KEY
-
-__all__ = ["DATA_DIR", "Dataset", "fetched_at", "load"]
 from app.metrics import error_by_horizon
+
+__all__ = ["DATA_DIR", "SNAPSHOT_JSON", "Dataset", "fetched_at", "load", "load_json"]
+
+SNAPSHOT_JSON = DATA_DIR / "snapshot.json"
 
 T = TypeVar("T")
 
@@ -75,6 +81,8 @@ class Dataset:
 def fetched_at(paths: list[Path]) -> pd.Timestamp:
     """When the snapshot was fetched: stamped in the parquet metadata by app.ingest. Files
     from before that stamp existed fall back to their modification time."""
+    import pyarrow.parquet as pq
+
     stamps = []
     for path in paths:
         metadata = pq.read_schema(path).metadata or {}
@@ -94,11 +102,34 @@ def load(data_dir: Path = DATA_DIR) -> Dataset:
     forecasts = _read(paths[1], FORECAST_COLUMNS)
     refreshed_at = fetched_at(paths)
     digest = hashlib.sha256(b"".join(p.read_bytes() for p in paths)).hexdigest()[:16]
-    return Dataset.build(
-        actuals, forecasts, pd.Timestamp(ACTUALS_START), pd.Timestamp(ACTUALS_END), refreshed_at, version=digest
-    )
+    return Dataset.build(actuals, forecasts, pd.Timestamp(ACTUALS_START), pd.Timestamp(ACTUALS_END), refreshed_at, version=digest)
+
+
+def load_json(path: Path = SNAPSHOT_JSON) -> Dataset:
+    """The same Dataset as load(), from the JSON snapshot (scripts/export_snapshot.py).
+    tests/test_dataset.py checks both give identical API responses."""
+    snap = json.loads(path.read_bytes())
+    origin = pd.Timestamp(snap["start"])
+
+    def at(seconds: list[int]) -> pd.Series:
+        return pd.Series(origin + pd.to_timedelta(seconds, unit="s"))
+
+    publish: list[int] = []
+    start: list[int] = []
+    mw: list[float | None] = []
+    for run in snap["runs"]:
+        for first, values in run["segments"]:
+            publish += [run["publish"]] * len(values)
+            start += [first + 3600 * i for i in range(len(values))]
+            mw += values
+    actuals = pd.DataFrame({"startTime": at(snap["actualTimes"]), "generation": pd.Series(snap["actualMw"], dtype="float32")})
+    forecasts = pd.DataFrame({"publishTime": at(publish), "startTime": at(start), "generation": pd.Series(mw, dtype="float32")})
+    refreshed_at = pd.Timestamp(snap["refreshedAt"]) if snap["refreshedAt"] else None
+    return Dataset.build(actuals, forecasts, origin, pd.Timestamp(snap["end"]), refreshed_at, version=snap["version"])
 
 
 def _read(path: Path, columns: list[str]) -> pd.DataFrame:
+    import pyarrow.parquet as pq
+
     df = pq.read_table(path, columns=columns).to_pandas()
     return df.astype({"generation": "float32"})
