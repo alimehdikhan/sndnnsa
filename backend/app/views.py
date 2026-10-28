@@ -8,7 +8,9 @@ selections (no reselection) and are memoised the same way.
 
 import gzip
 import math
+from collections.abc import Callable
 from datetime import date, timedelta
+from functools import partial
 from typing import Any, get_args
 
 import numpy as np
@@ -55,7 +57,7 @@ def to_json(model: BaseModel) -> bytes:
     return model.model_dump_json(by_alias=True).encode()
 
 
-def cached_json(ds: Dataset, key: tuple[Any, ...], build) -> bytes:
+def cached_json(ds: Dataset, key: tuple[Any, ...], build: Callable[[], BaseModel]) -> bytes:
     return ds.memo(("json", *key), lambda: to_json(build()))
 
 
@@ -131,9 +133,9 @@ def evaluation(ds: Dataset, mode: Mode, key: Gate | int) -> Evaluation:
     def compute() -> Evaluation:
         targets = ds.actuals["startTime"]
         if mode == "gate":
-            selected = latest_at_gate(ds.forecasts, key, targets=targets)
+            selected = latest_at_gate(ds.forecasts, _gate(key), targets=targets)
         else:
-            selected = latest_by_horizon(ds.forecasts, key, targets=targets)
+            selected = latest_by_horizon(ds.forecasts, _hours(key), targets=targets)
         return evaluate(selected, ds.actuals)
 
     return ds.memo(("evaluation", mode, key), compute)
@@ -143,8 +145,8 @@ def metrics(ds: Dataset, mode: Mode, key: Gate | int) -> MetricsResponse:
     ev = evaluation(ds, mode, key)
     return MetricsResponse(
         mode=mode,
-        gate=key if mode == "gate" else None,
-        h=key if mode == "horizon" else None,
+        gate=_gate(key) if mode == "gate" else None,
+        h=_hours(key) if mode == "horizon" else None,
         start=ds.start,
         end=ds.end,
         coverage=Coverage(**ev.coverage),
@@ -319,9 +321,13 @@ def scatter(ds: Dataset, pairs: pd.DataFrame) -> list[tuple[int, int, int]]:
 def precompute_essentials(ds: Dataset) -> None:
     """What the UI asks for first: the snapshot it computes every view from, and the
     status strip's metadata. Fast enough (well under a second) to block startup on."""
-    for key, build in ((("meta",), lambda: meta(ds)), (("dataset",), lambda: snapshot(ds))):
+    builds: list[tuple[tuple[str], Callable[[], BaseModel]]] = [
+        (("meta",), lambda: meta(ds)),
+        (("dataset",), lambda: snapshot(ds)),
+    ]
+    for key, build in builds:
         body = cached_json(ds, key, build)
-        ds.memo(("gzip", *key), lambda body=body: gzip.compress(body, compresslevel=6))
+        ds.memo(("gzip", *key), partial(gzip.compress, body, compresslevel=6))
 
 
 def precompute(ds: Dataset) -> None:
@@ -331,21 +337,21 @@ def precompute(ds: Dataset) -> None:
     precompute_essentials(ds)
     cached_json(ds, ("actuals", ds.start, ds.end), lambda: actuals(ds, ds.start, ds.end))
     for gate in GATES:
-        cached_json(ds, ("metrics", "gate", gate), lambda gate=gate: metrics(ds, "gate", gate))
-        cached_json(ds, ("view-accuracy", "gate", gate), lambda gate=gate: accuracy_view(ds, "gate", gate))
+        cached_json(ds, ("metrics", "gate", gate), partial(metrics, ds, "gate", gate))
+        cached_json(ds, ("view-accuracy", "gate", gate), partial(accuracy_view, ds, "gate", gate))
         for day in delivery_days(ds):
-            cached_json(ds, ("forecast-gate", day, gate), lambda day=day, gate=gate: forecast_at_gate(ds, day, gate))
-            cached_json(ds, ("view-decision", day, gate), lambda day=day, gate=gate: decision_view(ds, day, gate))
+            cached_json(ds, ("forecast-gate", day, gate), partial(forecast_at_gate, ds, day, gate))
+            cached_json(ds, ("view-decision", day, gate), partial(decision_view, ds, day, gate))
     for h in HORIZONS:
-        cached_json(ds, ("metrics", "horizon", h), lambda h=h: metrics(ds, "horizon", h))
-        cached_json(ds, ("forecast-horizon", h, ds.start, ds.end), lambda h=h: forecast_at_horizon(ds, h, ds.start, ds.end))
+        cached_json(ds, ("metrics", "horizon", h), partial(metrics, ds, "horizon", h))
+        cached_json(ds, ("forecast-horizon", h, ds.start, ds.end), partial(forecast_at_horizon, ds, h, ds.start, ds.end))
     cached_json(ds, ("view-accuracy", "horizon"), lambda: accuracy_view(ds, "horizon", GATES[0]))
     # Gzip each body once too; api._send serves these to clients that accept gzip.
     # A snapshot of the keys: requests may be adding entries from other threads meanwhile.
     for key in [k for k in list(ds._memo) if k[0] == "json"]:
-        body = ds._memo[key]
+        body: bytes = ds._memo[key]
         if len(body) >= 500:
-            ds.memo(("gzip", *key[1:]), lambda body=body: gzip.compress(body, compresslevel=6))
+            ds.memo(("gzip", *key[1:]), partial(gzip.compress, body, compresslevel=6))
 
 
 # ---------- Helpers ----------
@@ -376,4 +382,18 @@ def _num(value: Any) -> float | None:
 
 
 def _summary(summary: dict[str, float]) -> Summary:
-    return Summary(**{k: None if isinstance(v, float) and math.isnan(v) else v for k, v in summary.items()})
+    return Summary.model_validate({k: None if isinstance(v, float) and math.isnan(v) else v for k, v in summary.items()})
+
+
+def _gate(key: Gate | int) -> Gate:
+    """A selection key in gate mode is a gate."""
+    if isinstance(key, int):
+        raise TypeError(f"expected a gate, got horizon {key}")
+    return key
+
+
+def _hours(key: Gate | int) -> int:
+    """A selection key in horizon mode is a number of hours."""
+    if not isinstance(key, int):
+        raise TypeError(f"expected a horizon in hours, got gate {key}")
+    return key
