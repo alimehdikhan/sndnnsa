@@ -28,9 +28,7 @@ RUNS = [
 def build_dataset() -> Dataset:
     # One extra half-hour at 12 Jan 00:00, outside the window, which build() should trim.
     half_hours = pd.date_range("2026-01-10", "2026-01-12", freq="30min", tz="UTC")
-    actuals = pd.DataFrame(
-        {"startTime": half_hours, "generation": [1500 if t.day == 10 else 5000 for t in half_hours]}
-    )
+    actuals = pd.DataFrame({"startTime": half_hours, "generation": [1500 if t.day == 10 else 5000 for t in half_hours]})
     forecasts = pd.concat(
         pd.DataFrame({"publishTime": utc(published), "startTime": hours, "generation": float(generation)})
         for published, generation, hours in RUNS
@@ -123,6 +121,16 @@ def test_startup_serves_the_snapshot_at_once_and_warms_the_rest_in_the_backgroun
         assert ("json", "view-accuracy", "horizon") in fresh._memo
 
 
+def test_serves_even_when_startup_hooks_never_run() -> None:
+    """Serverless runtimes may skip the lifespan; the first request loads the data."""
+    fresh = build_dataset()
+    c = TestClient(create_app(load=lambda: fresh, frontend_dist=None, warm_up=False))  # no `with`: no lifespan
+
+    assert c.get("/api/dataset").status_code == 200
+    assert c.get("/api/view/decision", params={"day": "2026-01-10", "gate": "09:20"}).status_code == 200
+    assert c.get("/api/meta").headers["etag"] == f'W/"{fresh.version}"'
+
+
 def test_startup_precomputes_every_fixed_response() -> None:
     from app.views import precompute
 
@@ -142,7 +150,7 @@ class TestHttpCaching:
     def test_data_routes_carry_snapshot_etag(self, client: TestClient) -> None:
         response = client.get("/api/actuals")
 
-        assert response.headers["cache-control"] == "public, max-age=3600"
+        assert response.headers["cache-control"] == "no-cache"  # revalidate with the ETag every time
         assert response.headers["etag"] == f'W/"{DATASET.version}"'
 
     def test_matching_if_none_match_returns_304(self, client: TestClient) -> None:
@@ -196,16 +204,15 @@ class TestDecisionView:
 
         # 09:30 run on 9 Jan (2000) against actual 1500: over by 500 every hour.
         assert body["kpis"]["maxOver"] == {"value": 500.0, "startTime": "2026-01-10T00:00:00Z"}
-        assert body["kpis"]["p90Over"] == client.get(
-            "/api/metrics", params={"mode": "gate", "gate": "09:50"}
-        ).json()["summary"]["p90Over"]
+        assert (
+            body["kpis"]["p90Over"]
+            == client.get("/api/metrics", params={"mode": "gate", "gate": "09:50"}).json()["summary"]["p90Over"]
+        )
 
     def test_matches_the_granular_routes(self, client: TestClient) -> None:
         bundle = client.get("/api/view/decision", params={"day": "2026-01-10", "gate": "09:20"}).json()
         forecast = client.get("/api/forecast/gate", params={"day": "2026-01-10", "gate": "09:20"}).json()
-        actuals = client.get(
-            "/api/actuals", params={"start": "2026-01-10T00:00:00Z", "end": "2026-01-11T00:00:00Z"}
-        ).json()
+        actuals = client.get("/api/actuals", params={"start": "2026-01-10T00:00:00Z", "end": "2026-01-11T00:00:00Z"}).json()
 
         assert bundle["forecast"] == forecast["points"]
         assert bundle["actuals"] == actuals["points"]
@@ -316,9 +323,7 @@ class TestActuals:
         assert body["points"][0] == {"startTime": "2026-01-10T00:00:00Z", "generation": 1500.0}
 
     def test_range_is_half_open(self, client: TestClient) -> None:
-        body = client.get(
-            "/api/actuals", params={"start": "2026-01-11T01:00:00Z", "end": "2026-01-11T02:00:00Z"}
-        ).json()
+        body = client.get("/api/actuals", params={"start": "2026-01-11T01:00:00Z", "end": "2026-01-11T02:00:00Z"}).json()
 
         assert [p["startTime"] for p in body["points"]] == ["2026-01-11T01:00:00Z", "2026-01-11T01:30:00Z"]
 
@@ -389,9 +394,7 @@ class TestForecastAtHorizon:
             (24, "2026-01-10T05:00:00Z", None),  # nothing published by 9 Jan 05:00
         ],
     )
-    def test_picks_latest_run_at_least_h_ahead(
-        self, client: TestClient, h: int, start: str, generation: float | None
-    ) -> None:
+    def test_picks_latest_run_at_least_h_ahead(self, client: TestClient, h: int, start: str, generation: float | None) -> None:
         end = (utc(start) + pd.Timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         body = client.get("/api/forecast/horizon", params={"h": h, "start": start, "end": end}).json()
 
@@ -486,9 +489,7 @@ class TestDatasetSnapshot:
             for i, mw in enumerate(values)
         ]
         expected = DATASET.forecasts.sort_values(["publishTime", "startTime"])
-        assert rows == list(
-            zip(expected["publishTime"], expected["startTime"], expected["generation"].astype(int), strict=True)
-        )
+        assert rows == list(zip(expected["publishTime"], expected["startTime"], expected["generation"].astype(int), strict=True))
         assert [origin + pd.Timedelta(seconds=s) for s in body["actualTimes"]] == list(DATASET.actuals["startTime"])
         assert body["actualMw"] == DATASET.actuals["generation"].astype(int).tolist()
         assert body["version"] == DATASET.version
