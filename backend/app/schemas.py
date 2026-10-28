@@ -204,4 +204,3 @@ class DatasetSnapshot(ApiModel):
     actual_times: list[int]  # seconds since start, ascending
     actual_mw: list[int | float | None]  # null where the actual is missing
     runs: list[ForecastRun]  # by publish time
-
