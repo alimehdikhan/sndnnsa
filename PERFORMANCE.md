@@ -2,7 +2,7 @@
 
 ## Latest: every view computed in the browser
 
-The UI now fetches one compact snapshot (`/api/dataset`: 137 KB raw, 47 KB gzipped)
+The UI now fetches one compact snapshot (`/api/dataset`: 137 KB raw, 49 KB gzipped)
 and computes selections and metrics locally (`frontend/src/lib/engine.ts`). Charts
 render in a React transition, so controls never wait for them. Measured in real-time
 headless Chrome against the production build. Each figure is the median of 5–6
@@ -74,7 +74,7 @@ Route JS is the entry plus that page's chunk, the shared chart chunk and Rechart
 | `/api/view/accuracy?mode=gate` (new) | n/a | n/a | 2.3 | 2.7 |
 | `/api/view/accuracy?mode=horizon` (new, all 49 horizons) | n/a | n/a | 2.4 | 3.0 |
 
-About 2 ms is the floor for a local HTTP round trip here. Repeat visits within an hour don't hit the network at all (`Cache-Control: max-age=3600`). After that, the browser revalidates with the ETag and gets a 304.
+About 2 ms is the floor for a local HTTP round trip here. Repeat visits revalidate with the ETag (`Cache-Control: no-cache`) and get a 304 with no body while the data is unchanged.
 
 ## Interactions (production build)
 
@@ -92,7 +92,7 @@ About 2 ms is the floor for a local HTTP round trip here. Repeat visits within a
 - **Decision TBT went from 9 to 18 ms.** It's still far under the 150 ms target. The extra time comes from splitting work across separate chunks.
 - **Accuracy charts still take about 220 ms to redraw** after a selection change. The cost is rendering: Recharts redraws four charts, about 720 scatter points among them. Controls now respond within a frame, and chart updates run as interruptible background work, so a moving slider never waits on them. The next step would be drawing the scatter on a canvas.
 - **API startup was about 9 s** while every response was precomputed before serving. Now the API serves after building only the snapshot: ready in about 1.2 s, mostly Python imports. The other responses are precomputed in a background thread over the next 7–8 s, and a request that arrives first computes its own.
-- **Data cached in browsers can be up to an hour old.** With `max-age=3600`, a browser can keep using its copy for an hour after `make refresh-data` and a restart. The ETag changes with the data, so revalidation then fetches the new version.
+- **Fresh data over zero-request repeat visits.** API responses were first cached for an hour (`max-age=3600`), which left browsers showing an old snapshot for up to an hour after `make refresh-data`. They now revalidate on every load (`no-cache`). That costs one small round trip, answered with a 304 while nothing has changed.
 - **Two items differ from the brief:**
   - `ORJSONResponse` is deprecated in this FastAPI version. Instead, every response is serialised once at startup with Pydantic and stored, along with a gzipped copy, so routes do no serialisation at all.
   - `vite-plugin-compression` hasn't been released since 2022. The maintained `vite-plugin-compression2` is used instead.
