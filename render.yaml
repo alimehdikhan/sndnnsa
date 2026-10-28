@@ -1,0 +1,9 @@
+# Render Blueprint: New > Blueprint in the Render dashboard, pick this repository.
+# Builds the Dockerfile and serves the UI and API on one URL.
+services:
+  - type: web
+    name: gb-wind-forecast-monitor
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
