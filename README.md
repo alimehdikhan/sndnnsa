@@ -13,7 +13,9 @@ with actual wind outturn (FUELHH) for the day-ahead purchase decisions made in J
   P90 over-forecast buffer, and error by horizon (0–48 h), by hour of day and by size,
   plus the five worst misses.
 
-**Live app:** _add the Vercel URL here after deploying (see Deploy)._
+**Live app: https://sndnnsa.vercel.app.** The API docs are at
+https://sndnnsa.vercel.app/docs (React on Vercel, with the FastAPI backend as a Python
+function).
 
 ![Decision view, dark theme](docs/screenshots/decision-dark.png)
 
