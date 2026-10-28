@@ -1,0 +1,11 @@
+# One command, the whole app (UI + API) from the production image:
+#   docker compose up --build        then open http://localhost:8000 (API docs at /docs)
+services:
+  app:
+    build: .
+    image: gb-wind-forecast
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+    restart: unless-stopped
