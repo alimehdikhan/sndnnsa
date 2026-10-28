@@ -169,9 +169,9 @@ function compactRange(start: string, end: string): string {
 function SnapshotCard() {
   const engine = useEngine().data
   const m = engine?.meta
-  const stats: { value: string; label: string }[] = [
-    { value: m ? compactRange(m.start, m.end) : '—', label: 'Window' },
-    { value: engine ? String(engine.days().length) : '—', label: 'Delivery days' },
+  // The date range gets the full width: across a month boundary it's too long for half a tile.
+  const stats: { value: string; label: string; wide?: boolean }[] = [
+    { value: m ? compactRange(m.start, m.end) : '—', label: engine ? `${engine.days().length} delivery days` : 'Delivery days', wide: true },
     { value: m ? m.actualRows.toLocaleString('en-GB') : '—', label: 'Half-hours' },
     { value: m ? m.forecastRuns.toLocaleString('en-GB') : '—', label: 'Forecast runs' },
   ]
@@ -191,7 +191,7 @@ function SnapshotCard() {
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-1.5">
         {stats.map((s) => (
-          <div key={s.label} className="flex min-w-0 flex-col-reverse rounded-[8px] bg-hover px-2.5 py-2">
+          <div key={s.label} className={cn('flex min-w-0 flex-col-reverse rounded-[8px] bg-hover px-2.5 py-2', s.wide && 'col-span-2')}>
             <dt className="truncate text-11 text-fg-3">{s.label}</dt>
             <dd className="num truncate text-14 font-semibold text-fg">{s.value}</dd>
           </div>
