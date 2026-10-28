@@ -1,0 +1,194 @@
+/*
+ * Design tokens: the only place colours and design constants are defined.
+ * Dark is the default; [data-theme="light"] on <html> switches every role.
+ * Components reach these through Tailwind utilities (mapped in index.css) or
+ * var(--token) directly (e.g. Recharts stroke/fill props).
+ *
+ * Neutrals and text follow Apple's system palette. Charts use two hues on a
+ * graphite canvas, each with one meaning everywhere:
+ *   sky   = what actually happened (actual output; the forecast came in under it)
+ *   amber = what was forecast       (forecast; the forecast came in over it)
+ * Everything else stays neutral, and red is kept for status only. Dark-theme data
+ * colours sit a step deeper than Apple's UI tints, inside the dataviz lightness
+ * band (L 0.48-0.67), so solid fills read rich rather than glowing. The pair
+ * passes colour-blind separation in both themes (dataviz validator).
+ *
+ * Text contrast (WCAG AA): dark primary >= 14:1, secondary >= 6:1, muted >= 5:1;
+ * light primary >= 15:1, secondary >= 7.5:1, muted >= 4.7:1.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Surfaces: graphite, with a faint top highlight on cards */
+  --bg: #0a0a0b;
+  --chrome: #111113; /* sidebar, status strip */
+  --surface: #161618;
+  --surface-raised: #1d1d20;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --hover: rgba(255, 255, 255, 0.04);
+  --selected: rgba(255, 255, 255, 0.07);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+
+  /* Controls (Apple segmented control and fields) */
+  --control-bg: #1d1d20;
+  --control-track: rgba(118, 118, 128, 0.2);
+  --control-thumb: #5a5a5f;
+  --slider-knob: #f5f5f7;
+  --control-thumb-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
+
+  /* Text (Apple label colours) */
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-muted: #8e8e93;
+
+  /* Accent: Apple sky. Actual series, selection, focus. */
+  --accent: #5ac8fa;
+  --accent-text: #5ac8fa;
+  --accent-fill: #5ac8fa;
+  --accent-contrast: #000000;
+  --accent-subtle: rgba(90, 200, 250, 0.14);
+
+  /* Data: sky = actual / under-forecast, amber = forecast / over-forecast */
+  --series-actual: #2f9cdb;
+  --series-forecast: #d47a0c;
+  --series-forecast-subtle: rgba(212, 122, 12, 0.1);
+  --series-forecast-edge: rgba(212, 122, 12, 0.6);
+  --error-over: #d47a0c;
+  --error-over-text: #eb9b3d;
+  --error-over-subtle: rgba(212, 122, 12, 0.14);
+  --error-under: #2f9cdb;
+  --error-under-text: #5cb6ea;
+  --error-under-subtle: rgba(47, 156, 219, 0.14);
+  --chart-neutral: #48484a; /* de-emphasised marks (Apple systemGray3) */
+  --chart-neutral-strong: #7c7c80; /* a neutral mark under the pointer */
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-reference: rgba(255, 255, 255, 0.28);
+  --chart-band: rgba(255, 255, 255, 0.035);
+  --chart-area-opacity: 0.28; /* top of area gradients */
+  --glyph-highlight: rgba(255, 255, 255, 0.07); /* top edge of glyph badges */
+
+  /* Status */
+  --status-ok: #30d158;
+  --status-warn: #ff9f0a;
+  --status-down: #ff6961;
+  --status-down-subtle: rgba(255, 105, 97, 0.1);
+
+  /* Loading */
+  --skeleton: rgba(255, 255, 255, 0.06);
+  --skeleton-shine: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f5f5f7;
+  --chrome: #fbfbfd;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --hover: rgba(0, 0, 0, 0.035);
+  --selected: rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+
+  --control-bg: #ffffff;
+  --control-track: rgba(118, 118, 128, 0.12);
+  --control-thumb: #ffffff;
+  --slider-knob: #ffffff;
+  --control-thumb-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #515154;
+  --text-muted: #6e6e73;
+
+  --accent: #0071e3;
+  --accent-text: #0066cc;
+  --accent-fill: #0071e3;
+  --accent-contrast: #ffffff;
+  --accent-subtle: rgba(0, 113, 227, 0.1);
+
+  --series-actual: var(--accent);
+  --series-forecast: #d4730b;
+  --series-forecast-subtle: rgba(212, 115, 11, 0.08);
+  --series-forecast-edge: rgba(212, 115, 11, 0.55);
+  --error-over: #d4730b;
+  --error-over-text: #a35a00;
+  --error-over-subtle: rgba(212, 115, 11, 0.09);
+  --error-under: #0071e3;
+  --error-under-text: #0066cc;
+  --error-under-subtle: rgba(0, 113, 227, 0.08);
+  --chart-neutral: #c7c7cc;
+  --chart-neutral-strong: #8e8e93;
+  --chart-grid: rgba(0, 0, 0, 0.06);
+  --chart-reference: rgba(0, 0, 0, 0.3);
+  --chart-band: rgba(0, 0, 0, 0.03);
+  --chart-area-opacity: 0.16;
+  --glyph-highlight: rgba(255, 255, 255, 0.8);
+
+  --status-ok: #248a3d;
+  --status-warn: #c93400;
+  --status-down: #d70015;
+  --status-down-subtle: rgba(215, 0, 21, 0.06);
+
+  --skeleton: rgba(0, 0, 0, 0.06);
+  --skeleton-shine: rgba(255, 255, 255, 0.7);
+}
+
+:root {
+  /* Type: SF Pro on Apple platforms, self-hosted Inter elsewhere. Numbers use the
+     same face with tabular figures, as Apple's Stocks and Health apps do. */
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+  --font-numeric: var(--font-ui);
+
+  /* Size / line height / tracking, set together per size (tighter as text grows). */
+  --text-11: 11px;
+  --leading-11: 14px;
+  --tracking-11: 0.006em;
+  --text-12: 12px;
+  --leading-12: 16px;
+  --tracking-12: 0em;
+  --text-13: 13px;
+  --leading-13: 18px;
+  --tracking-13: -0.004em;
+  --text-14: 14px;
+  --leading-14: 20px;
+  --tracking-14: -0.008em;
+  --text-16: 16px;
+  --leading-16: 22px;
+  --tracking-16: -0.012em;
+  --text-20: 20px;
+  --leading-20: 26px;
+  --tracking-20: -0.016em;
+  --text-28: 28px;
+  --leading-28: 34px;
+  --tracking-28: -0.022em;
+  --text-36: 36px;
+  --leading-36: 42px;
+  --tracking-36: -0.026em;
+  --tracking-label: 0.06em;
+
+  /* Shape and space (4px grid, 8px rhythm) */
+  --radius-card: 12px;
+  --radius-input: 8px;
+  --radius-thumb: 6px;
+  --radius-bar: 3px;
+  --space: 4px;
+  --gutter: 24px;
+
+  /* Layout */
+  --sidebar-collapsed: 64px;
+  --sidebar-expanded: 236px;
+  --content-max: 1440px;
+  --status-strip: 32px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+}
