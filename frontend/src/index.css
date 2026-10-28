@@ -1,0 +1,315 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./styles/shadcn.css";
+@import "./styles/tokens.css";
+
+/*
+ * Inter, Latin subset only (one variable file covers every weight we use). Apple
+ * platforms match -apple-system first in --font-ui, so they never download it.
+ */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Theme is chosen by data-theme on <html> (see src/lib/theme.ts), not by OS. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Tailwind names for the tokens in styles/tokens.css. Nothing here defines a
+ * colour; every value is a reference.
+ */
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-heading: var(--font-display);
+  --font-mono: var(--font-numeric);
+
+  --text-11: var(--text-11);
+  --text-11--line-height: var(--leading-11);
+  --text-11--letter-spacing: var(--tracking-11);
+  --text-12: var(--text-12);
+  --text-12--line-height: var(--leading-12);
+  --text-12--letter-spacing: var(--tracking-12);
+  --text-13: var(--text-13);
+  --text-13--line-height: var(--leading-13);
+  --text-13--letter-spacing: var(--tracking-13);
+  --text-14: var(--text-14);
+  --text-14--line-height: var(--leading-14);
+  --text-14--letter-spacing: var(--tracking-14);
+  --text-16: var(--text-16);
+  --text-16--line-height: var(--leading-16);
+  --text-16--letter-spacing: var(--tracking-16);
+  --text-20: var(--text-20);
+  --text-20--line-height: var(--leading-20);
+  --text-20--letter-spacing: var(--tracking-20);
+  --text-28: var(--text-28);
+  --text-28--line-height: var(--leading-28);
+  --text-28--letter-spacing: var(--tracking-28);
+  --text-36: var(--text-36);
+  --text-36--line-height: var(--leading-36);
+  --text-36--letter-spacing: var(--tracking-36);
+
+  --color-bg: var(--bg);
+  --color-chrome: var(--chrome);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-raised);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-control: var(--control-bg);
+  --color-control-track: var(--control-track);
+  --color-control-thumb: var(--control-thumb);
+  --color-knob: var(--slider-knob);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text-primary);
+  --color-fg-2: var(--text-secondary);
+  --color-fg-3: var(--text-muted);
+  --color-teal: var(--accent);
+  --color-teal-text: var(--accent-text);
+  --color-teal-subtle: var(--accent-subtle);
+  --color-forecast: var(--series-forecast);
+  --color-over: var(--error-over);
+  --color-over-subtle: var(--error-over-subtle);
+  --color-over-text: var(--error-over-text);
+  --color-under: var(--error-under);
+  --color-under-subtle: var(--error-under-subtle);
+  --color-under-text: var(--error-under-text);
+  --color-neutral-mark: var(--chart-neutral);
+  --color-skeleton: var(--skeleton);
+  --color-status-ok: var(--status-ok);
+  --color-status-warn: var(--status-warn);
+  --color-status-down: var(--status-down);
+  --color-status-down-subtle: var(--status-down-subtle);
+
+  /* shadcn/ui roles */
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--accent-fill);
+  --color-primary-foreground: var(--accent-contrast);
+  --color-secondary: var(--surface-raised);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-raised);
+  --color-muted-foreground: var(--text-secondary);
+  --color-accent: var(--selected);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--error-over);
+  --color-border: var(--border);
+  --color-input: var(--border-strong);
+  --color-ring: var(--accent);
+
+  --radius-card: var(--radius-card);
+  --radius-input: var(--radius-input);
+  --radius-thumb: var(--radius-thumb);
+  --radius-sm: var(--radius-thumb);
+  --radius-md: var(--radius-input);
+  --radius-lg: var(--radius-input);
+  --radius-xl: var(--radius-card);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-thumb: var(--control-thumb-shadow);
+  --ease-out-strong: var(--ease-out);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-ui);
+    font-size: var(--text-14);
+    line-height: var(--leading-14);
+    letter-spacing: var(--tracking-14);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scrollbar-color: var(--border-strong) transparent;
+    caret-color: var(--accent);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    transition:
+      background-color var(--duration-base) var(--ease-out),
+      color var(--duration-base) var(--ease-out);
+  }
+
+  ::selection {
+    background: var(--accent-subtle);
+    color: var(--text-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Tracked uppercase label for sections, KPIs and key/value grids. */
+  .label {
+    font-size: var(--text-11);
+    line-height: var(--leading-11);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  /* Numbers: same face, tabular figures so columns and live values don't jitter. */
+  .num {
+    font-family: var(--font-numeric);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Theme-change and interaction transitions, kept to colour and border. */
+  .themed {
+    transition:
+      background-color var(--duration-base) var(--ease-out),
+      border-color var(--duration-base) var(--ease-out),
+      color var(--duration-base) var(--ease-out),
+      box-shadow var(--duration-base) var(--ease-out);
+  }
+
+  .press {
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
+  }
+
+  /* The app's icon: an accent tile lit from above, like a macOS app icon. */
+  .app-icon {
+    color: #fff;
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--accent) 86%, white) 0%,
+      color-mix(in oklab, var(--accent) 74%, black) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.35),
+      0 1px 2px rgb(0 0 0 / 0.2),
+      0 4px 12px color-mix(in oklab, var(--accent) 30%, transparent);
+  }
+
+  /* Glyph badges: a tile softly tinted by its glyph's role and lit from above. */
+  .glyph-badge {
+    --tone: var(--text-secondary);
+    color: var(--text-secondary);
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--tone) 16%, var(--surface-raised)) 0%,
+      color-mix(in oklab, var(--tone) 8%, var(--surface)) 100%
+    );
+    border: 1px solid color-mix(in oklab, var(--tone) 24%, transparent);
+    box-shadow:
+      inset 0 1px 0 var(--glyph-highlight),
+      0 1px 2px rgb(0 0 0 / 0.1);
+  }
+  .glyph-badge[data-tone='accent'] {
+    --tone: var(--accent);
+    color: var(--accent-text);
+  }
+  .glyph-badge[data-tone='actual'] {
+    --tone: var(--series-actual);
+    color: var(--error-under-text);
+  }
+  .glyph-badge[data-tone='forecast'] {
+    --tone: var(--series-forecast);
+    color: var(--error-over-text);
+  }
+
+  /* A selection rendering in the background: the previous view stays on screen, and
+     only dims if the wait becomes noticeable. */
+  .view {
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+  .view[data-pending='true'] {
+    opacity: 0.72;
+    transition: opacity 200ms var(--ease-out) 160ms;
+  }
+
+  /* Feedback on press, not on release. */
+  .press:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-thumb);
+    background: var(--skeleton);
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+    animation: skeleton-sweep 1.4s var(--ease-out) infinite;
+  }
+
+  @keyframes skeleton-sweep {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Recharts: strip default chrome and set tick type. */
+  .chart .recharts-cartesian-axis-tick-value {
+    font-family: var(--font-numeric);
+    font-size: var(--text-11);
+    font-variant-numeric: tabular-nums;
+    fill: var(--text-muted);
+  }
+
+  .chart .recharts-label {
+    font-family: var(--font-ui);
+    font-size: var(--text-11);
+    fill: var(--text-secondary);
+  }
+
+  .chart .recharts-surface:focus,
+  .chart .recharts-wrapper:focus {
+    outline: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+
+  .skeleton::after {
+    animation: none;
+  }
+}
