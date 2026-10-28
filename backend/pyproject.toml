@@ -18,6 +18,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.11",
 ]
 
 [tool.setuptools.packages.find]
@@ -25,3 +27,29 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+extend-include = ["../api/*.py"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, bugbear, pyupgrade, simplify, ruff-specific
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+# SIM300 reads `assert ingest.X == utc(...)` as a Yoda condition; the order is the natural one.
+ignore = ["SIM300"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["app"]
+# pandas and pyarrow ship without complete type stubs; their calls are typed as Any.
+ignore_missing_imports = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+
