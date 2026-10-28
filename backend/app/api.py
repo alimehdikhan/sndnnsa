@@ -5,12 +5,15 @@ returned as stored JSON bytes; routes only validate input and look results up.
 """
 
 import gzip
+import threading
+from collections.abc import Callable
 from datetime import date, datetime
 from typing import Annotated, Any, NoReturn
 
 import pandas as pd
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel
 
 from app import views
 from app.dataset import Dataset
@@ -31,8 +34,26 @@ from app.schemas import (
 router = APIRouter(prefix="/api")
 
 
+_loading = threading.Lock()
+
+
+def ensure_dataset(app: Any) -> Dataset:
+    """The app's dataset, loaded and its snapshot built on first use. Startup normally
+    does this (app.main); serverless runtimes may not run startup hooks, so the first
+    request does it instead."""
+    ds: Dataset | None = getattr(app.state, "dataset", None)
+    if ds is None:
+        with _loading:
+            ds = getattr(app.state, "dataset", None)
+            if ds is None:
+                ds = app.state.load()
+                views.precompute_essentials(ds)
+                app.state.dataset = ds
+    return ds
+
+
 def get_dataset(request: Request) -> Dataset:
-    return request.app.state.dataset
+    return ensure_dataset(request.app)
 
 
 DatasetDep = Annotated[Dataset, Depends(get_dataset)]
@@ -43,7 +64,7 @@ GateParam = Annotated[Gate, Query(description="Europe/London time on the day bef
 HOURS_AHEAD = "Forecasts must be published at least this many hours before startTime."
 
 
-def _send(request: Request, ds: Dataset, key: tuple[Any, ...], build) -> Response:
+def _send(request: Request, ds: Dataset, key: tuple[Any, ...], build: Callable[[], BaseModel]) -> Response:
     """Stored JSON for `key`; gzipped once and reused for clients that accept gzip."""
     body = views.cached_json(ds, key, build)
     if len(body) >= 500 and "gzip" in request.headers.get("accept-encoding", ""):
@@ -103,9 +124,13 @@ def metrics(
 
     byHorizon doesn't depend on mode: it's the error curve for horizons 1-48h.
     """
-    if mode == "horizon" and h is None:
+    key: Gate | int
+    if mode == "gate":
+        key = gate
+    elif h is None:
         _reject("h", "Field required when mode=horizon", None)
-    key = gate if mode == "gate" else h
+    else:
+        key = h
     return _send(request, ds, ("metrics", mode, key), lambda: views.metrics(ds, mode, key))
 
 
