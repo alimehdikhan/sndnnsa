@@ -130,14 +130,10 @@ def error_by_hour(joined: pd.DataFrame, tz: str = LONDON) -> pd.DataFrame:
     hour = joined["startTime"].dt.tz_convert(tz).dt.hour.to_numpy()[known]
     error = joined["error"].to_numpy(dtype="float64")[known]
     actual = joined["actual"].to_numpy(dtype="float64")[known]
-    return pd.DataFrame(
-        [{"hour": h, **_summarise_arrays(error[hour == h], actual[hour == h])} for h in range(24)]
-    )
+    return pd.DataFrame([{"hour": h, **_summarise_arrays(error[hour == h], actual[hour == h])} for h in range(24)])
 
 
-def error_by_horizon(
-    fc: pd.DataFrame, actuals: pd.DataFrame, horizons: Iterable[float] = range(1, 49)
-) -> pd.DataFrame:
+def error_by_horizon(fc: pd.DataFrame, actuals: pd.DataFrame, horizons: Iterable[float] = range(1, 49)) -> pd.DataFrame:
     """summarise() of latest_by_horizon(fc, h) against actuals, for each horizon h.
 
     Targets are the actuals' startTimes. Each horizon is scored on the targets that
