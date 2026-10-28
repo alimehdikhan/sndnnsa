@@ -12,8 +12,8 @@ VENV_PY := $(VENV_BIN)/python
 
 .PHONY: install install-backend install-frontend \
         dev dev-backend dev-frontend \
-        test test-backend test-frontend \
-        refresh-data build serve bench size lighthouse parity engine-fixture
+        test test-backend test-frontend lint-backend e2e \
+        refresh-data build serve up bench size lighthouse parity engine-fixture
 
 install: install-backend install-frontend
 
@@ -37,8 +37,12 @@ dev-frontend:
 
 test: test-backend test-frontend
 
-test-backend:
+test-backend: lint-backend
 	cd backend && $(VENV_PY) -m pytest
+
+# ruff (lint + formatting) and mypy over the backend and the Vercel entry point.
+lint-backend:
+	cd backend && $(VENV_PY) -m ruff check . ../api && $(VENV_PY) -m ruff format --check . ../api && $(VENV_PY) -m mypy
 
 # Type-check, lint, and the engine tests (the browser's selections and metrics
 # against the backend's own answers, tests/fixtures/engine.json).
@@ -53,6 +57,10 @@ parity:
 engine-fixture:
 	cd backend && $(VENV_PY) scripts/export_engine_fixture.py
 
+# Playwright end-to-end tests in Chrome, against the production build (starts the API if needed).
+e2e: build
+	cd frontend && PYTHON=../backend/$(VENV_PY) npm run e2e
+
 # Re-fetch wind actuals and forecasts from Elexon into backend/data/*.parquet.
 refresh-data:
 	cd backend && $(VENV_PY) -m app.ingest && $(VENV_PY) scripts/export_snapshot.py
@@ -63,6 +71,10 @@ build:
 
 serve: build
 	cd backend && $(VENV_PY) -m uvicorn app.main:app --port 8000
+
+# The whole app from the Docker image, on http://localhost:8000.
+up:
+	docker compose up --build
 
 # p50/p95 response time per API route (50 requests each) against a running server.
 bench:
