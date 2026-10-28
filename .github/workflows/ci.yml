@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install -e "backend[dev]"
+      - run: pytest
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck && npm run lint && npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      # Performance budget: fails if initial JS exceeds 180 KB gzipped.
+      - run: npm run size
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+  lighthouse:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install -e backend
+      # The API serves the built frontend and the committed data snapshot (backend/data).
+      - name: Start the app
+        working-directory: backend
+        run: |
+          nohup uvicorn app.main:app --port 8000 > ../uvicorn.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:8000/api/health && break; sleep 1; done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Targets on the Decision view: performance >= 95, LCP < 1.5 s, CLS < 0.05, TBT < 150 ms.
+      - run: npx --yes @lhci/cli@0.15.x autorun --config=lighthouserc.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci
