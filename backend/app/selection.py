@@ -18,18 +18,14 @@ LONDON = "Europe/London"
 COLUMNS = ["startTime", "publishTime", "generation"]
 
 
-def latest_by_horizon(
-    fc: pd.DataFrame, horizon_h: float, *, targets: Iterable[pd.Timestamp] | None = None
-) -> pd.DataFrame:
+def latest_by_horizon(fc: pd.DataFrame, horizon_h: float, *, targets: Iterable[pd.Timestamp] | None = None) -> pd.DataFrame:
     """For each startTime, the forecast with max publishTime where publishTime <= startTime - horizon_h."""
     start = _targets(fc, targets)
     cutoff = start - pd.Timedelta(hours=horizon_h)
     return _latest(fc, start, cutoff, inclusive=True)
 
 
-def latest_at_gate(
-    fc: pd.DataFrame, gate: str = "09:20", *, targets: Iterable[pd.Timestamp] | None = None
-) -> pd.DataFrame:
+def latest_at_gate(fc: pd.DataFrame, gate: str = "09:20", *, targets: Iterable[pd.Timestamp] | None = None) -> pd.DataFrame:
     """For each startTime, the latest forecast published strictly before `gate` (HH:MM,
     Europe/London) on D-1, where D is the startTime's delivery day in Europe/London.
     """
