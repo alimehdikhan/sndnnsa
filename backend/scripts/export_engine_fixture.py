@@ -62,9 +62,7 @@ def answers(ds: Dataset) -> dict:
     return {
         "snapshot": load(views.snapshot(ds)),
         "decision": {
-            f"{day}|{gate}": load(views.decision_view(ds, day, gate))
-            for day in views.delivery_days(ds)
-            for gate in views.GATES
+            f"{day}|{gate}": load(views.decision_view(ds, day, gate)) for day in views.delivery_days(ds) for gate in views.GATES
         },
         "accuracy": {
             **{f"gate|{gate}": load(views.accuracy_view(ds, "gate", gate)) for gate in views.GATES},
